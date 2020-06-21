@@ -1,11 +1,11 @@
-import Parser from 'rss-parser';
+import { Item } from 'rss-parser';
 import { ConfigService } from '@nestjs/config';
-import { AnnounceTransformer } from './transform.class';
-import { AnnounceDto } from '../../handler';
 import { Injectable } from '@nestjs/common';
+import { FeedAnnounceProducer } from './producer.class';
+import { AnnounceDto } from '../../handler';
 
 @Injectable()
-export class ColdfilmTransformer extends AnnounceTransformer {
+export class ColdfilmProducer extends FeedAnnounceProducer {
   private readonly studio = 'ColdFilm';
   public readonly name = 'coldfilm';
 
@@ -13,7 +13,7 @@ export class ColdfilmTransformer extends AnnounceTransformer {
     super(config.get<string>('COLDFILM_URL'));
   }
 
-  transformation = (data: Parser.Item): AnnounceDto => {
+  transformation = (data: Item): AnnounceDto => {
     const slash = /.+\/\s(.+)\s(\d+)\sсезон\s+(\d+)\s+серия\s+/;
     const regexp = /(.+)\s(\d+)\sсезон\s+(\d+)\s+серия\s+/;
 
@@ -26,12 +26,6 @@ export class ColdfilmTransformer extends AnnounceTransformer {
         return null;
       }
     }
-
-    /** TODO: it could be trailer, find a way to distinguish */
-    // if (item.summary.match(/(Трейлер)/i)) {
-    //   /* Pass trailers */
-    //   resolve(null)
-    // }
 
     const announce = new AnnounceDto();
     announce.name = result[1].trim();

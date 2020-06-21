@@ -3,22 +3,22 @@ import { ConfigModule } from '@nestjs/config';
 import { ParserService } from './parser.service';
 import { AnnounceHandlerModule } from '../handler';
 import {
-  BaibakoTransformer,
-  ColdfilmTransformer,
-  KubikTransformer,
-  KurajTransformer,
-  LostfilmTransformer,
-} from './transformers';
+  BaibakoProducer,
+  ColdfilmProducer,
+  KubikProducer,
+  KurajProducer,
+  LostfilmProducer,
+} from './producers';
 
 @Module({
   imports: [AnnounceHandlerModule, ConfigModule],
   providers: [
     ParserService,
-    BaibakoTransformer,
-    ColdfilmTransformer,
-    KubikTransformer,
-    KurajTransformer,
-    LostfilmTransformer,
+    BaibakoProducer,
+    ColdfilmProducer,
+    KubikProducer,
+    KurajProducer,
+    LostfilmProducer,
   ],
 })
 export class ParserModule {}

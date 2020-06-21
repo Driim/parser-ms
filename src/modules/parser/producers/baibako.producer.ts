@@ -2,10 +2,10 @@ import Parser from 'rss-parser';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AnnounceDto } from '../../handler';
-import { AnnounceTransformer } from './transform.class';
+import { FeedAnnounceProducer } from './producer.class';
 
 @Injectable()
-export class BaibakoTransformer extends AnnounceTransformer {
+export class BaibakoProducer extends FeedAnnounceProducer {
   private readonly studio = 'BaibaKo';
   public readonly name = 'baibako';
 

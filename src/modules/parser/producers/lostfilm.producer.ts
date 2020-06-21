@@ -1,11 +1,11 @@
-import Parser from 'rss-parser';
+import { Item } from 'rss-parser';
 import { ConfigService } from '@nestjs/config';
-import { AnnounceDto } from '../../handler';
-import { AnnounceTransformer } from './transform.class';
 import { Injectable } from '@nestjs/common';
+import { AnnounceDto } from '../../handler';
+import { FeedAnnounceProducer } from './producer.class';
 
 @Injectable()
-export class LostfilmTransformer extends AnnounceTransformer {
+export class LostfilmProducer extends FeedAnnounceProducer {
   private readonly studio = 'LostFilm';
   public readonly name = 'lostfilm';
   public readonly url: string;
@@ -14,7 +14,7 @@ export class LostfilmTransformer extends AnnounceTransformer {
     super(config.get<string>('LOSTFILM_URL'));
   }
 
-  transformation = (data: Parser.Item): AnnounceDto => {
+  transformation = (data: Item): AnnounceDto => {
     const result = data.title.match(/(.+)\s\((.+)\)..+\(S(\d+)E(\d+)\)/);
     if (!result) {
       return null;

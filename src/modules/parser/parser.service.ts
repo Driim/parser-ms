@@ -1,38 +1,34 @@
-import Parser from 'rss-parser';
-import uniqWith from 'lodash.uniqwith';
 import axios from 'axios';
 import axiosCookieJarSupport from 'axios-cookiejar-support';
 import tough from 'tough-cookie';
 import { Injectable, Logger } from '@nestjs/common';
 import { AnnounceHandlerService, AnnounceDto } from '../handler';
 import {
-  BaibakoTransformer,
-  ColdfilmTransformer,
-  KubikTransformer,
-  KurajTransformer,
-  LostfilmTransformer,
-  AnnounceTransformer,
-} from './transformers';
+  BaibakoProducer,
+  ColdfilmProducer,
+  KubikProducer,
+  KurajProducer,
+  LostfilmProducer,
+  AnnounceProducer,
+} from './producers';
 import { Interval, Cron } from '@nestjs/schedule';
 
 axiosCookieJarSupport(axios);
-type TransformerList = Record<string, AnnounceTransformer>;
+type TransformerList = Record<string, AnnounceProducer>;
 
 @Injectable()
 export class ParserService {
   private readonly logger = new Logger(ParserService.name);
   private readonly list: TransformerList = {};
-  private readonly rssParser: Parser;
 
   constructor (
     private readonly announceHandler: AnnounceHandlerService,
-    baibakoTransformer: BaibakoTransformer,
-    coldfilmTransformer: ColdfilmTransformer,
-    kubikTransformer: KubikTransformer,
-    kurajTransformer: KurajTransformer,
-    lostfilmTransformer: LostfilmTransformer,
+    baibakoTransformer: BaibakoProducer,
+    coldfilmTransformer: ColdfilmProducer,
+    kubikTransformer: KubikProducer,
+    kurajTransformer: KurajProducer,
+    lostfilmTransformer: LostfilmProducer,
   ) {
-    this.rssParser = new Parser();
     this.list[baibakoTransformer.name] = baibakoTransformer;
     this.list[coldfilmTransformer.name] = coldfilmTransformer;
     this.list[kubikTransformer.name] = kubikTransformer;
@@ -40,7 +36,7 @@ export class ParserService {
     this.list[lostfilmTransformer.name] = lostfilmTransformer;
   }
 
-  private async download (studio: AnnounceTransformer): Promise<string> {
+  private async download (studio: AnnounceProducer): Promise<string> {
     const jar = new tough.CookieJar();
 
     if (studio.hasLoginUrl()) {
@@ -53,28 +49,17 @@ export class ParserService {
     return result.data as string;
   }
 
-  private async parse (data: string, studio: AnnounceTransformer): Promise<AnnounceDto[]> {
-    const feed = await this.rssParser.parseString(data);
-    const allAnnounces = feed.items.map(studio.transform).filter((item) => item != null);
-
-    return uniqWith(
-      allAnnounces,
-      (a: AnnounceDto, b: AnnounceDto) =>
-        a.name === b.name && a.season === b.season && a.series === b.series && a.studio == b.studio,
-    );
-  }
-
   public async check (name: string): Promise<void> {
     this.logger.log(`Проверяем ${name}`);
-    const studio = this.list[name];
-    if (!studio) {
+    const producer = this.list[name];
+    if (!producer) {
       this.logger.error(`Не нашел ${name}`);
       return;
     }
 
     /** TODO: error handling, create interceptor */
-    const data = await this.download(studio);
-    const announces = await this.parse(data, studio);
+    const data = await this.download(producer);
+    const announces = await producer.parse(data);
 
     if (!announces || announces.length == 0) {
       this.logger.warn(`Нет аннонсов ${name}`);
@@ -92,10 +77,10 @@ export class ParserService {
   /** Every hour at 10 min */
   @Cron('0 10 * * * *')
   async checkVoiceoverStudios (): Promise<void> {
-    for (const studio of Object.values(this.list)) {
+    for (const producer of Object.values(this.list)) {
       try {
-        const data = await this.download(studio);
-        const announces = await this.parse(data, studio);
+        const data = await this.download(producer);
+        const announces = await producer.parse(data);
 
         if (!announces || announces.length == 0) {
           this.logger.warn(`Нет аннонсов ${name}`);

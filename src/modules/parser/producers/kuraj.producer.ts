@@ -1,11 +1,11 @@
-import { AnnounceTransformer } from './transform.class';
+import { FeedAnnounceProducer } from './producer.class';
 import { ConfigService } from '@nestjs/config';
 import { AnnounceDto } from 'src/modules/handler';
-import Parser from 'rss-parser';
+import { Item } from 'rss-parser';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class KurajTransformer extends AnnounceTransformer {
+export class KurajProducer extends FeedAnnounceProducer {
   private readonly studio = 'Kuraj-Bambey';
   public readonly name = 'kuraj';
 
@@ -13,7 +13,7 @@ export class KurajTransformer extends AnnounceTransformer {
     super(config.get<string>('KURAJ_URL'));
   }
 
-  transformation = (data: Parser.Item): AnnounceDto => {
+  transformation = (data: Item): AnnounceDto => {
     const result = data.title.match(/(.+)\s+(\d+)\s+сезон\s+(\d+)\s+серия/);
     if (!result || result.length == 0) {
       return null;
