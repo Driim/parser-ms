@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ParserService } from './parser.service';
-import { ParserController } from './parser.controller';
 import { AnnounceHandlerModule } from '../handler';
 import {
   BaibakoTransformer,
@@ -21,6 +20,5 @@ import {
     KurajTransformer,
     LostfilmTransformer,
   ],
-  controllers: [ParserController],
 })
 export class ParserModule {}

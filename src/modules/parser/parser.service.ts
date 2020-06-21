@@ -6,17 +6,17 @@ import tough from 'tough-cookie';
 import { Injectable, Logger } from '@nestjs/common';
 import { AnnounceHandlerService, AnnounceDto } from '../handler';
 import {
-  TransformInterface,
   BaibakoTransformer,
   ColdfilmTransformer,
   KubikTransformer,
   KurajTransformer,
   LostfilmTransformer,
+  AnnounceTransformer,
 } from './transformers';
+import { Interval, Cron } from '@nestjs/schedule';
 
 axiosCookieJarSupport(axios);
-type ParserFunction = (data: Parser.Item) => AnnounceDto;
-type TransformerList = Record<string, TransformInterface>;
+type TransformerList = Record<string, AnnounceTransformer>;
 
 @Injectable()
 export class ParserService {
@@ -40,22 +40,22 @@ export class ParserService {
     this.list[lostfilmTransformer.name] = lostfilmTransformer;
   }
 
-  private async download (url: string, loginUrl?: string): Promise<string> {
+  private async download (studio: AnnounceTransformer): Promise<string> {
     const jar = new tough.CookieJar();
 
-    if (loginUrl) {
-      await axios.get(loginUrl, { jar, withCredentials: true });
+    if (studio.hasLoginUrl()) {
+      await axios.get(studio.getLoginUrl(), { jar, withCredentials: true });
     }
 
-    this.logger.log(`Загружаем xml: ${url}`);
+    this.logger.log(`Загружаем xml: ${studio.getUrl()}`);
 
-    const result = await axios.get(url, { jar, responseType: 'text' });
+    const result = await axios.get(studio.getUrl(), { jar, withCredentials: true });
     return result.data as string;
   }
 
-  private async parse (data: string, parser: ParserFunction): Promise<AnnounceDto[]> {
+  private async parse (data: string, studio: AnnounceTransformer): Promise<AnnounceDto[]> {
     const feed = await this.rssParser.parseString(data);
-    const allAnnounces = feed.items.map(parser).filter((item) => item != null);
+    const allAnnounces = feed.items.map(studio.transform).filter((item) => item != null);
 
     return uniqWith(
       allAnnounces,
@@ -66,14 +66,15 @@ export class ParserService {
 
   public async check (name: string): Promise<void> {
     this.logger.log(`Проверяем ${name}`);
-    const transformer = this.list[name];
-    if (!transformer) {
+    const studio = this.list[name];
+    if (!studio) {
       this.logger.error(`Не нашел ${name}`);
       return;
     }
 
-    const site = await this.download(transformer.url, transformer.loginUrl);
-    const announces = await this.parse(site, transformer.transform);
+    /** TODO: error handling, create interceptor */
+    const data = await this.download(studio);
+    const announces = await this.parse(data, studio);
 
     if (!announces || announces.length == 0) {
       this.logger.warn(`Нет аннонсов ${name}`);
@@ -81,5 +82,31 @@ export class ParserService {
     }
 
     return this.announceHandler.process(announces);
+  }
+
+  // @Interval(3000)
+  // async test (): Promise<void> {
+  //   return this.check('lostfilm');
+  // }
+
+  /** Every hour at 10 min */
+  @Cron('0 10 * * * *')
+  async checkVoiceoverStudios (): Promise<void> {
+    for (const studio of Object.values(this.list)) {
+      try {
+        const data = await this.download(studio);
+        const announces = await this.parse(data, studio);
+
+        if (!announces || announces.length == 0) {
+          this.logger.warn(`Нет аннонсов ${name}`);
+          continue;
+        }
+
+        await this.announceHandler.process(announces);
+      } catch (error) {
+        this.logger.error(error);
+        continue;
+      }
+    }
   }
 }

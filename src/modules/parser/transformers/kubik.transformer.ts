@@ -1,20 +1,19 @@
 import Parser from 'rss-parser';
-import { TransformInterface } from './transform.interface';
+import { AnnounceTransformer } from './transform.class';
 import { AnnounceDto } from '../../handler';
 import { ConfigService } from '@nestjs/config';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class KubikTransformer implements TransformInterface {
+export class KubikTransformer extends AnnounceTransformer {
   private readonly studio = 'кубик в кубе';
   public readonly name = 'kubik';
-  public readonly url: string;
 
   constructor (config: ConfigService) {
-    this.url = config.get<string>('KUBIK_URL');
+    super(config.get<string>('KUBIK_URL'));
   }
 
-  transform = (data: Parser.Item): AnnounceDto => {
+  transformation = (data: Parser.Item): AnnounceDto => {
     const regexp = /\/\s?(.+)(Сезон|Сезон:)\s(\d)(\s?\/\s?|\s+)(Эпизод|Эпизоды|Серии|Серии:)\s?\d-(\d+)(.+)(Кубик в Кубе)\)$/;
     const result = data.title.match(regexp);
     if (!result || result.length == 0) {
@@ -31,7 +30,7 @@ export class KubikTransformer implements TransformInterface {
     }
 
     const announce = new AnnounceDto();
-    announce.date = new Date(data.isoDate) || new Date(data.pubDate) || new Date();
+    announce.date = new Date(data.isoDate) || new Date();
     announce.studio = this.studio;
     announce.name = name;
     announce.series = `${result[6].trim()} серия`;
