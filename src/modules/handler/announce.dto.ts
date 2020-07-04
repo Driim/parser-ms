@@ -29,5 +29,5 @@ export class AnnounceDto {
   url?: string;
 
   @Exclude({ toPlainOnly: true })
-  parse?: (url: string, follow: boolean) => Promise<Serial>;
+  parse?: (url: string, name: string, follow: boolean) => Promise<Serial>;
 }

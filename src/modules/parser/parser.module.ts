@@ -8,6 +8,7 @@ import {
   KubikProducer,
   KurajProducer,
   LostfilmProducer,
+  SeasonvarProducer
 } from './producers';
 
 @Module({
@@ -19,6 +20,7 @@ import {
     KubikProducer,
     KurajProducer,
     LostfilmProducer,
+    SeasonvarProducer
   ],
 })
 export class ParserModule {}

@@ -30,7 +30,7 @@ export class AnnounceHandlerService {
     const existing = await this.announce
       .findOne()
       .where('season', announce.season)
-      .where('name', announce.name)
+      .where('serial', serial._id)
       .where('series', announce.series)
       .where('studio', announce.studio)
       .exec();
@@ -64,7 +64,7 @@ export class AnnounceHandlerService {
       if (!serial) {
         if (announce.url && announce.parse) {
           try {
-            serial = await announce.parse(announce.url, true);
+            serial = await announce.parse(announce.url, announce.name, true);
           } catch (e) {
             this.logger.error('Не смог распарсить сериал');
             this.logger.error(e);
@@ -85,7 +85,7 @@ export class AnnounceHandlerService {
         let tmp: Serial;
 
         try {
-          tmp = await announce.parse(announce.url, false);
+          tmp = await announce.parse(announce.url, announce.name, false);
         } catch (e) {
           this.logger.error('Не смог распарсить сезон');
           this.logger.error(e);
