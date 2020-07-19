@@ -6,6 +6,9 @@ import { SerialService } from './serial.provider';
 import { TRANSPORT_SERVICE, SERIAL_MODEL } from '../../constants.app';
 import { Serial } from '../../interfaces';
 import { SerialModule } from './serial.module';
+import { SentryModule } from '@ntegral/nestjs-sentry';
+import { LogLevel } from '@sentry/types';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 const TESTING_NAME = 'Testing';
 
@@ -24,6 +27,17 @@ describe('Serial Service', () => {
             options: { url: 'redis://localhost:6379' },
           },
         ]),
+        SentryModule.forRootAsync({
+          imports: [ConfigModule],
+          useFactory: async (cfg: ConfigService) => ({
+            dsn: cfg.get('SENTRY_DSN'),
+            debug: true,
+            environment: 'test',
+            release: null, // must create a release in sentry.io dashboard
+            logLevel: LogLevel.None, //based on sentry.io loglevel //
+          }),
+          inject: [ConfigService],
+        }),
         MongooseModule.forRootAsync({
           useFactory: async () => ({
             uri: 'mongodb://localhost:27017/swatcher_test',
