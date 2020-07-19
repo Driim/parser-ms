@@ -81,7 +81,6 @@ describe('Announce Handler Service', () => {
     });
 
     it("should skip new serials if can't parse them", async () => {
-      announce.parse = async (url: string, name: string, follow: boolean) => Promise.reject('error');
       jest.spyOn(specialCaseService, 'check').mockResolvedValue(TESTING_NAME);
       jest.spyOn(serialService, 'findExact').mockResolvedValue(null);
       jest.spyOn(serialService, 'hadSeason').mockReturnValue(false);
@@ -92,7 +91,6 @@ describe('Announce Handler Service', () => {
     });
 
     it("should work even if can't parse new season", async () => {
-      announce.parse = async (url: string, name: string, follow: boolean) => Promise.reject('error');
       jest.spyOn(specialCaseService, 'check').mockResolvedValue(TESTING_NAME);
       jest.spyOn(serialService, 'findExact').mockResolvedValue(serial);
       jest.spyOn(serialService, 'hadSeason').mockReturnValue(false);

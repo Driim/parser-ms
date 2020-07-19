@@ -1,6 +1,6 @@
 import { FeedAnnounceProducer } from './producer.class';
 import { ConfigService } from '@nestjs/config';
-import { AnnounceDto } from 'src/modules/handler';
+import { AnnounceDto } from '../../handler';
 import { Item } from 'rss-parser';
 import { Injectable } from '@nestjs/common';
 

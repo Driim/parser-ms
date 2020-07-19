@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Model } from 'mongoose';
 import { Serial, Season } from '../../interfaces';
 import { SERIAL_MODEL } from '../../constants.app';
@@ -8,10 +9,22 @@ import { SERIAL_MODEL } from '../../constants.app';
 export class SerialService {
   private readonly logger = new Logger(SerialService.name);
 
-  constructor (@InjectModel(SERIAL_MODEL) private serial: Model<Serial>) {}
+  constructor (
+    @InjectSentry() private readonly sentry: SentryService,
+    @InjectModel(SERIAL_MODEL) private serial: Model<Serial>,
+  ) {}
 
   async findExact (name: string): Promise<Serial> {
-    return this.serial.findOne({ name }).exec();
+    const serials = await this.serial.find({ name }).exec();
+    if (serials.length != 1) {
+      this.logger.error(`По запросу ${name} было найдено больше 1 сериала`);
+      this.logger.error(JSON.stringify(serials));
+      this.sentry.instance().captureMessage(`По запросу ${name} было найдено больше 1 сериала`);
+
+      return null;
+    }
+
+    return serials[0];
   }
 
   async addVoiceoverIfNew (serial: Serial, voiceover: string): Promise<void> {
@@ -31,6 +44,10 @@ export class SerialService {
       serial.season.push(season);
     }
 
+    return serial.save();
+  }
+
+  async save (serial: Serial): Promise<Serial> {
     return serial.save();
   }
 }

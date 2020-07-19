@@ -2,6 +2,7 @@ import Parser from 'rss-parser';
 import uniqWith from 'lodash.uniqwith';
 import { Logger } from '@nestjs/common';
 import { AnnounceDto } from '../../handler';
+import { Serial, Season } from '../../../interfaces';
 
 export abstract class AnnounceProducer {
   protected readonly url: string;
@@ -26,6 +27,19 @@ export abstract class AnnounceProducer {
   };
 
   public abstract async parse(data: string): Promise<AnnounceDto[]>;
+
+  public async parseSerial (
+    data: string,
+    name: string,
+  ): Promise<{ serial: Serial; links: string[] }> {
+    this.logger.warn(`Этот продюсер не умеет парсить сериалы, игнорируем...`);
+    return null;
+  }
+
+  public async parseSeason (data: string, url: string): Promise<Season> {
+    this.logger.warn(`Этот продюсер не умеет парсить новые сезоны, игнорируем...`);
+    return null;
+  }
 }
 
 export abstract class FeedAnnounceProducer extends AnnounceProducer {

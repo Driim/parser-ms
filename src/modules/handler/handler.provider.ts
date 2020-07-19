@@ -4,11 +4,17 @@ import { Model } from 'mongoose';
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientProxy } from '@nestjs/microservices';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { ANNOUNCE_MODEL, TRANSPORT_SERVICE } from '../../constants.app';
 import { Serial, Announce } from '../../interfaces';
 import { SerialService } from '../serial';
 import { AnnounceDto } from './announce.dto';
 import { SpecialCaseService } from '../special';
+
+interface INewSeason {
+  announce: AnnounceDto;
+  serial: Serial;
+}
 
 @Injectable()
 export class AnnounceHandlerService {
@@ -17,6 +23,7 @@ export class AnnounceHandlerService {
   constructor (
     private readonly specialCaseService: SpecialCaseService,
     private readonly serialService: SerialService,
+    @InjectSentry() private readonly sentry: SentryService,
     @InjectModel(ANNOUNCE_MODEL) private announce: Model<Announce>,
     @Inject(TRANSPORT_SERVICE) private readonly client: ClientProxy,
   ) {}
@@ -48,53 +55,41 @@ export class AnnounceHandlerService {
     await result.save();
   }
 
-  public async process (announces: AnnounceDto[]): Promise<void> {
+  /**
+   * Check if serial exists and announce is new
+   * All new announces for existing serials will fanout
+   * @param announces - list of announces
+   * @returns list of announces for new serials and list of announces with new seasons
+   */
+  public async process (
+    announces: AnnounceDto[],
+  ): Promise<{ newSerials: AnnounceDto[]; newSeasons: INewSeason[] }> {
+    const newSerials: Array<AnnounceDto> = [];
+    const newSeasons: Array<INewSeason> = [];
+
     for (const announce of announces) {
       const errors = await validate(announce);
       if (errors.length > 0) {
         this.logger.warn('Bad announce');
         this.logger.warn(announce);
+        this.logger.error(errors);
+        this.sentry.instance().captureException(errors);
 
         continue;
       }
 
       announce.name = await this.specialCaseService.check(announce.name, announce.studio);
 
-      let serial = await this.serialService.findExact(announce.name);
+      const serial = await this.serialService.findExact(announce.name);
       if (!serial) {
-        if (announce.url && announce.parse) {
-          try {
-            serial = await announce.parse(announce.url, announce.name, true);
-          } catch (e) {
-            this.logger.error('Не смог распарсить сериал');
-            this.logger.error(e);
-          }
-        }
-
-        if (!serial) {
-          this.logger.log(`Сериалa ${announce.name} еще нет в базе, пропускаем...`);
-          continue;
-        }
+        this.logger.log(`Сериалa ${announce.name} еще нет в базе, пропускаем...`);
+        newSerials.push(announce);
+        continue;
       }
 
-      if (
-        !this.serialService.hadSeason(serial, announce.season) &&
-        announce.url &&
-        announce.parse
-      ) {
-        let tmp: Serial;
-
-        try {
-          tmp = await announce.parse(announce.url, announce.name, false);
-        } catch (e) {
-          this.logger.error('Не смог распарсить сезон');
-          this.logger.error(e);
-        }
-
-        if (tmp) {
-          this.logger.log(`Добавляем ${tmp.season[0].name} сериалу ${serial.name}`);
-          await this.serialService.addSeason(serial, tmp.season[0]);
-        }
+      if (!this.serialService.hadSeason(serial, announce.season)) {
+        this.logger.log(`Сезона ${announce.season} сериала ${announce.name} еще нет в базе...`);
+        newSeasons.push({ announce, serial });
       }
 
       if (await this.checkAlreadyExist(announce, serial)) {
@@ -114,5 +109,7 @@ export class AnnounceHandlerService {
         })
         .toPromise();
     }
+
+    return { newSerials, newSeasons };
   }
 }

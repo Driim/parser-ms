@@ -1,7 +1,11 @@
-import axios, { AxiosProxyConfig } from 'axios';
+import axios, { AxiosProxyConfig, AxiosResponse } from 'axios';
 import axiosCookieJarSupport from 'axios-cookiejar-support';
-import tough from 'tough-cookie';
+import tough, { CookieJar } from 'tough-cookie';
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron, Interval } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
+import { SerialService } from '../serial';
 import { AnnounceHandlerService } from '../handler';
 import {
   BaibakoProducer,
@@ -11,9 +15,7 @@ import {
   LostfilmProducer,
   AnnounceProducer,
 } from './producers';
-import { Cron, Interval } from '@nestjs/schedule';
 import { SeasonvarProducer } from './producers/seasonvar.producer';
-import { ConfigService } from '@nestjs/config';
 
 axiosCookieJarSupport(axios);
 type TransformerList = Record<string, AnnounceProducer>;
@@ -26,14 +28,16 @@ export class ParserService {
   private readonly proxyPort: number;
 
   constructor (
+    @InjectSentry() private readonly client: SentryService,
     private readonly announceHandler: AnnounceHandlerService,
     private readonly seasonvarProducer: SeasonvarProducer,
+    private readonly serialService: SerialService,
     baibakoTransformer: BaibakoProducer,
     coldfilmTransformer: ColdfilmProducer,
     kubikTransformer: KubikProducer,
     kurajTransformer: KurajProducer,
     lostfilmTransformer: LostfilmProducer,
-    config: ConfigService
+    config: ConfigService,
   ) {
     this.studios[baibakoTransformer.name] = baibakoTransformer;
     this.studios[coldfilmTransformer.name] = coldfilmTransformer;
@@ -47,36 +51,33 @@ export class ParserService {
     }
   }
 
-  private async download (studio: AnnounceProducer): Promise<string> {
+  downloadPage = async (
+    url: string,
+    proxy?: AxiosProxyConfig,
+    jar?: CookieJar,
+  ): Promise<AxiosResponse<any>> => {
+    this.logger.log(`Загружаем ${url}`);
+    return await axios.get(url, { proxy, jar, timeout: 10000, withCredentials: true });
+  };
+
+  private async downloadProducersPage (studio: AnnounceProducer): Promise<string> {
     const jar = new tough.CookieJar();
-    let proxy: AxiosProxyConfig = null;
+    let proxy: AxiosProxyConfig = undefined;
 
     if (this.proxyUrl) {
       proxy = { host: this.proxyUrl, port: this.proxyPort };
     }
 
     if (studio.hasLoginUrl()) {
-      await axios.get(studio.getLoginUrl(), {
-        proxy,
-        jar,
-        timeout: 10000,
-        withCredentials: true,
-      });
+      await this.downloadPage(studio.getLoginUrl(), proxy, jar);
     }
 
-    this.logger.log(`Загружаем xml: ${studio.getUrl()}`);
-
-    const result = await axios.get(studio.getUrl(), {
-      proxy,
-      jar,
-      timeout: 10000,
-      withCredentials: true,
-    });
+    const result = await this.downloadPage(studio.getUrl(), proxy, jar);
     return result.data as string;
   }
 
-  private async checkProducer(producer: AnnounceProducer): Promise<void> {
-    const data = await this.download(producer);
+  private async checkProducer (producer: AnnounceProducer): Promise<void> {
+    const data = await this.downloadProducersPage(producer);
     const announces = await producer.parse(data);
 
     if (!announces || announces.length == 0) {
@@ -84,16 +85,82 @@ export class ParserService {
       return;
     }
 
+    let proxy: AxiosProxyConfig = undefined;
+
+    if (this.proxyUrl) {
+      proxy = { host: this.proxyUrl, port: this.proxyPort };
+    }
+
     this.logger.log(`Обрабатываем ${announces.length} новостей`);
 
-    await this.announceHandler.process(announces);
+    const { newSerials, newSeasons } = await this.announceHandler.process(announces);
+
+    /** All new seasons already announces, so just add new season */
+    for (const { announce, serial } of newSeasons) {
+      if (!announce.url || !announce.producer) {
+        continue;
+      }
+
+      let page;
+      try {
+        page = await this.downloadPage(announce.url, proxy);
+      } catch (error) {
+        this.client.instance().captureException(error);
+        continue;
+      }
+
+      const season = await announce.producer.parseSeason(page.data, announce.url);
+      this.logger.log(`Добавляем ${season.name} сериалу ${serial.name}`);
+
+      await this.serialService.addSeason(serial, season);
+    }
+
+    /** All announces will be handled next time, now just add serials */
+    for (const announce of newSerials) {
+      if (!announce.url || !announce.producer) {
+        continue;
+      }
+
+      let page;
+      try {
+        page = await this.downloadPage(announce.url, proxy);
+      } catch (error) {
+        this.client.instance().captureException(error);
+        continue;
+      }
+
+      const { serial, links } = await announce.producer.parseSerial(page.data, announce.name);
+      await this.serialService.save(serial);
+      this.logger.log(`Добавляем новый сериал ${serial.name}`);
+
+      for (const link of links) {
+        let page;
+        try {
+          page = await this.downloadPage(link, proxy);
+        } catch (error) {
+          this.client.instance().captureException(error);
+          continue;
+        }
+
+        const season = await announce.producer.parseSeason(page.data, link);
+        this.logger.log(`Добавляем ${season.name} сериалу ${serial.name}`);
+
+        /** this also save serial */
+        await this.serialService.addSeason(serial, season);
+      }
+    }
   }
 
-  @Interval(15000)
-  async testSeasonvar() {
-    // await this.checkProducer(this.studios['lostfilm']);
-    await this.checkProducer(this.seasonvarProducer);
-  }
+  // @Interval(15000)
+  // async testSeasonvar() {
+  //   try {
+  //     await this.checkProducer(this.studios['lostfilm']);
+  //     await this.checkProducer(this.seasonvarProducer);
+  //   } catch (error) {
+  //     this.logger.error(error);
+  //     this.client.instance().captureException(error);
+  //   }
+  // }
 
   /** Every hour at 10 min */
   @Cron('0 10 * * * *')
@@ -103,6 +170,7 @@ export class ParserService {
         this.checkProducer(producer);
       } catch (error) {
         this.logger.error(error);
+        this.client.instance().captureException(error);
       }
     }
   }
@@ -114,6 +182,7 @@ export class ParserService {
       this.checkProducer(this.seasonvarProducer);
     } catch (error) {
       this.logger.error(error);
+      this.client.instance().captureException(error);
     }
   }
 }

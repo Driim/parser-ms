@@ -1,6 +1,6 @@
-import { IsDate, IsNotEmpty, IsString, IsOptional, IsUrl } from 'class-validator';
+import { IsDate, IsNotEmpty, IsString, IsOptional, IsUrl, IsObject } from 'class-validator';
 import { Exclude } from 'class-transformer';
-import { Serial } from '../../interfaces';
+import { AnnounceProducer } from '../parser/producers';
 
 export class AnnounceDto {
   @IsDate()
@@ -29,5 +29,7 @@ export class AnnounceDto {
   url?: string;
 
   @Exclude({ toPlainOnly: true })
-  parse?: (url: string, name: string, follow: boolean) => Promise<Serial>;
+  @IsOptional()
+  @IsObject()
+  producer?: AnnounceProducer;
 }
