@@ -1,11 +1,14 @@
 language: node_js
 node_js:
-  - 12
+- 12
 services:
-  - mongodb
-  - redis
+- mongodb
+- redis
 before_script:
-  - sleep 15
+- sleep 15
 env:
+  matrix:
   - MONGODB_URI=mongodb://localhost:27017/swatcher
   - REDIS_URI=redis://localhost:6379
+  global:
+    secure: KqiR7hMM64a5ydd472jWPeA5LsfMeCPLfwOk0O/zNHNlCJ/n/d/KeJAnkkMFW+oKxBsQ8tKcbX5lycJkoFUt/keCPfIyenORIuHojOh8ubVEd7ZLWsGta9iY32+O67U2+C16DIcJkU2ZTrrmj1/bfC2I/TXXZnL8cGaKM1Sv4IyhD5RyVC8rGv3Gq5dAA0efSM6Cmuw0f3GXic2guQ9BPgP1X0OHR0/gtjNzH3MFbKRRY25J26S3fyqP8ImzQu+TX0x2Ojw5vNHlWMJvSojKxnzIbkXKXXSNV4VZbl1lDYrbyaGjXI1UqtCPf3nFvxDuBjCOCAVw+rgrf/Ge9IuMGJyhCiIVOVbO7EltAkWeVPbp01eSpWiqi6lZBy1wJT8T5KlmzuFt/0HqB3h0n3sWUwIJdlYelPCGpcYF596jjQ3T+kbLpIOySKU3sWI88qMPA2CT+ha+1cR2QsD0stPUk4QB8oewRc7z5lynPkUMZcFNswYUB7V461JKeg+maqX+BWwNNQwPkvvrlGEWGyvo9xzBa6IXTgHPVCfUZBDvz06dKWtnBNtKQ1qvvdEPxKIjS5H77hL6066J1kBStL1x+tyO1ppPqrids1Pc82QJ8rNbWtJwP73ud6xZid5y4WTLib+FTJYFaWGbp5dViBRKH7UvO1vFH0JxowNEOla62+0=
