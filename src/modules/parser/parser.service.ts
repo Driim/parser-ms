@@ -154,8 +154,8 @@ export class ParserService {
   // @Interval(15000)
   // async testSeasonvar() {
   //   try {
-  //     await this.checkProducer(this.studios['lostfilm']);
-  //     await this.checkProducer(this.seasonvarProducer);
+  //     await this.checkProducer(this.studios['coldfilm']);
+  //     // await this.checkProducer(this.seasonvarProducer);
   //   } catch (error) {
   //     this.logger.error(error);
   //     this.client.instance().captureException(error);
@@ -167,7 +167,7 @@ export class ParserService {
   async checkVoiceoverStudios (): Promise<void> {
     for (const producer of Object.values(this.studios)) {
       try {
-        this.checkProducer(producer);
+        await this.checkProducer(producer);
       } catch (error) {
         this.logger.error(error);
         this.client.instance().captureException(error);
@@ -179,7 +179,7 @@ export class ParserService {
   @Cron('0 30 * * * *')
   async checkSeasonvar (): Promise<void> {
     try {
-      this.checkProducer(this.seasonvarProducer);
+      await this.checkProducer(this.seasonvarProducer);
     } catch (error) {
       this.logger.error(error);
       this.client.instance().captureException(error);

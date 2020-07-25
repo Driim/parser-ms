@@ -16,11 +16,15 @@ export class SerialService {
 
   async findExact (name: string): Promise<Serial> {
     const serials = await this.serial.find({ name }).exec();
-    if (serials.length != 1) {
+    if (serials.length > 1) {
       this.logger.error(`По запросу ${name} было найдено больше 1 сериала`);
       this.logger.error(JSON.stringify(serials));
       this.sentry.instance().captureMessage(`По запросу ${name} было найдено больше 1 сериала`);
 
+      return null;
+    }
+
+    if (serials.length == 0) {
       return null;
     }
 
