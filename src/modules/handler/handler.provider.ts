@@ -10,6 +10,7 @@ import { Serial, Announce } from '../../interfaces';
 import { SerialService } from '../serial';
 import { AnnounceDto } from './announce.dto';
 import { SpecialCaseService } from '../special';
+import uniqWith from 'lodash.uniqwith';
 
 interface INewSeason {
   announce: AnnounceDto;
@@ -110,6 +111,10 @@ export class AnnounceHandlerService {
         .toPromise();
     }
 
-    return { newSerials, newSeasons };
+    /** remove not uniq new serials and seasons */
+    return {
+      newSerials: uniqWith(newSerials, (a: AnnounceDto, b: AnnounceDto) => a.name === b.name),
+      newSeasons: uniqWith(newSeasons, (a: INewSeason, b: INewSeason) => a.announce.name === b.announce.name && a.announce.season === b.announce.season)
+    };
   }
 }

@@ -39,15 +39,16 @@ export class SeasonvarProducer extends AnnounceProducer {
     return regexp.exec(text);
   }
 
-  private parseSeries (text: string): { series: string; studio: string } {
+  private parseSeries (text: string): Array<{ series: string; studio: string }> {
     const res = this.cleanText(text);
 
     if (res) {
       const series = text.substring(0, text.indexOf('(')).trim();
-      return { series, studio: res[1] };
+      const studios = res[1].split(',').map((studio) => studio.trim());
+      return studios.map((studio) => ({ series, studio }));
     }
 
-    return { series: text, studio: null };
+    return [{ series: text, studio: null }];
   }
 
   private parseSeasonName (text: string): string {
@@ -60,22 +61,33 @@ export class SeasonvarProducer extends AnnounceProducer {
     return '1 сезон';
   }
 
-  private parseAnnounce ($: Cheerio, date: Date): AnnounceDto {
+  private parseAnnounce ($: Cheerio, date: Date): AnnounceDto[] {
     const announce = new AnnounceDto();
 
     announce.date = date;
-    announce.name = this.parseName($);
-    announce.url = new URL($.attr('href'), this.getUrl()).toString();
-    announce.producer = this;
-    const { series, studio } = this.parseSeries(
+    const name = this.parseName($);
+    const url = new URL($.attr('href'), this.getUrl()).toString();
+    const producer = this;
+    const series = this.parseSeries(
       $.children('div[class="news-w"]')
         .children('span[class="news_s"]')
         .text(),
     );
-    announce.series = series;
-    if (studio) {
-      announce.studio = studio;
-    }
+
+    const announces = series.map(({ series, studio }) => {
+      const announce = new AnnounceDto();
+
+      announce.date = date;
+      announce.name = name;
+      announce.url = url;
+      announce.producer = producer;
+      announce.series = series;
+      if (studio) {
+        announce.studio = studio;
+      }
+
+      return announce;
+    });
 
     /** I don't remember why I did it */
     $.children('div[class="news-w"]')
@@ -86,11 +98,12 @@ export class SeasonvarProducer extends AnnounceProducer {
       .children('span')
       .remove();
 
-    announce.season = this.parseSeasonName($.children('div[class="news-w"]').text());
+    const season = this.parseSeasonName($.children('div[class="news-w"]').text());
 
-    /** TODO: add parse function to announce */
-
-    return announce;
+    return announces.map((announce) => {
+      announce.season = season;
+      return announce;
+    });
   }
 
   async parse (data: string): Promise<AnnounceDto[]> {
@@ -111,7 +124,7 @@ export class SeasonvarProducer extends AnnounceProducer {
 
       for (let j = 0; j < news.length; j++) {
         try {
-          announces.push(this.parseAnnounce($(news[j]), date));
+          announces.push(...this.parseAnnounce($(news[j]), date));
         } catch (error) {
           this.logger.error(error);
         }

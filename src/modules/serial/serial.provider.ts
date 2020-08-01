@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Model } from 'mongoose';
-import { Serial, Season } from '../../interfaces';
-import { SERIAL_MODEL } from '../../constants.app';
+import { Serial, Season, Subscription } from '../../interfaces';
+import { SERIAL_MODEL, SUBSCRIPTION_MODEL } from '../../constants.app';
 
 @Injectable()
 export class SerialService {
@@ -12,6 +12,7 @@ export class SerialService {
   constructor (
     @InjectSentry() private readonly sentry: SentryService,
     @InjectModel(SERIAL_MODEL) private serial: Model<Serial>,
+    @InjectModel(SUBSCRIPTION_MODEL) private subscription: Model<Subscription>
   ) {}
 
   async findExact (name: string): Promise<Serial> {
@@ -49,6 +50,18 @@ export class SerialService {
     }
 
     return serial.save();
+  }
+
+  async addNewSerial (serial: Serial): Promise<Serial> {
+    serial = await serial.save();
+
+    /** Create subscription model */
+    const subs = new this.subscription();
+    subs.serial = serial._id;
+    subs.fans = [];
+    await subs.save();
+    
+    return serial;
   }
 
   async save (serial: Serial): Promise<Serial> {

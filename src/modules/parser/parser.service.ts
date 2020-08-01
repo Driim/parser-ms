@@ -130,7 +130,7 @@ export class ParserService {
       }
 
       const { serial, links } = await announce.producer.parseSerial(page.data, announce.name);
-      await this.serialService.save(serial);
+      await this.serialService.addNewSerial(serial);
       this.logger.log(`Добавляем новый сериал ${serial.name}`);
 
       for (const link of links) {
@@ -154,8 +154,8 @@ export class ParserService {
   // @Interval(15000)
   // async testSeasonvar() {
   //   try {
-  //     await this.checkProducer(this.studios['coldfilm']);
-  //     // await this.checkProducer(this.seasonvarProducer);
+  //     // await this.checkProducer(this.studios['coldfilm']);
+  //     await this.checkProducer(this.seasonvarProducer);
   //   } catch (error) {
   //     this.logger.error(error);
   //     this.client.instance().captureException(error);
