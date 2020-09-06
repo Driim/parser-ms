@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ClientsModule } from '@nestjs/microservices';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TRANSPORT_SERVICE, ANNOUNCE_MODEL, SERIAL_MODEL } from '../../constants.app';
-import { Transport } from '@nestjs/common/enums/transport.enum';
 import { MongooseModule, getModelToken } from '@nestjs/mongoose';
 import { AnnounceHandlerModule } from './handler.module';
 import { AnnounceHandlerService } from './handler.provider';
