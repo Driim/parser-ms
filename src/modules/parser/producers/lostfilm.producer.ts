@@ -25,7 +25,8 @@ export class LostfilmProducer extends FeedAnnounceProducer {
     announce.date = new Date(data.isoDate) || new Date();
     announce.studio = this.studio;
     announce.series = `${result[4].trim()} серия`;
-    announce.season = `${result[3].trim()} сезон`;
+    /** Lostfilm uses 01 */
+    announce.season = `${parseInt(result[3].trim(), 10)} сезон`;
 
     return announce;
   };
