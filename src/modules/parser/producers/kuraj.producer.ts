@@ -23,8 +23,8 @@ export class KurajProducer extends FeedAnnounceProducer {
     announce.date = new Date(data.isoDate) || new Date();
     announce.studio = this.studio;
     announce.name = result[1].trim();
-    announce.series = `${result[3].trim()} серия`;
-    announce.season = `${result[2].trim()} сезон`;
+    announce.series = `${parseInt(result[3].trim(), 10)} серия`;
+    announce.season = `${parseInt(result[2].trim(), 10)} сезон`;
 
     return announce;
   };

@@ -33,8 +33,8 @@ export class KubikProducer extends FeedAnnounceProducer {
     announce.date = new Date(data.isoDate) || new Date();
     announce.studio = this.studio;
     announce.name = name;
-    announce.series = `${result[6].trim()} серия`;
-    announce.season = `${result[3].trim()} сезон`;
+    announce.series = `${parseInt(result[6].trim(), 10)} серия`;
+    announce.season = `${parseInt(result[3].trim(), 10)} сезон`;
 
     return announce;
   };

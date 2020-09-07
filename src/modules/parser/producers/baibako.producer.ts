@@ -30,8 +30,8 @@ export class BaibakoProducer extends FeedAnnounceProducer {
     announce.studio = this.studio;
     announce.name = result[1].trim();
     announce.date = new Date(data.isoDate) || new Date();
-    announce.series = `${series} серия`;
-    announce.season = `${result[2].trim()} сезон`;
+    announce.series = `${parseInt(series, 10)} серия`;
+    announce.season = `${parseInt(result[2].trim(), 10)} сезон`;
 
     return announce;
   };
