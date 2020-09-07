@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Model } from 'mongoose';
+import escapeRegexpString from 'escape-string-regexp';
 import { Serial, Season, Subscription } from '../../interfaces';
 import { SERIAL_MODEL, SUBSCRIPTION_MODEL } from '../../constants.app';
 
@@ -16,7 +17,13 @@ export class SerialService {
   ) {}
 
   async findExact (name: string): Promise<Serial> {
-    const serials = await this.serial.find({ name }).exec();
+    const regexp = new RegExp(`^${escapeRegexpString(name)}$`, 'i');
+    const serials = await this.serial.find()
+      .or([
+        { name: regexp },
+        { alias: regexp }
+      ])
+      .exec();
     if (serials.length > 1) {
       this.logger.error(`По запросу ${name} было найдено больше 1 сериала`);
       this.logger.error(JSON.stringify(serials));
