@@ -118,6 +118,7 @@ export class ParserService {
     /** All announces will be handled next time, now just add serials */
     for (const announce of newSerials) {
       if (!announce.url || !announce.producer) {
+        this.client.instance().captureMessage(`Сериалa ${announce.name} нет в базе`);
         continue;
       }
 
